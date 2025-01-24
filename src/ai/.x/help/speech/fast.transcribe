@@ -1,0 +1,21 @@
+Fast transcribe an audio file using Azure AI Speech services.
+
+Usage:
+    ai speech fast-transcribe [options] <audioFile>
+
+Options:
+    --locale <locale>                   Specify the language locale (e.g., en-US)
+    --locales <locale1,locale2,...>     Specify multiple locales for language identification
+    --diarization                       Enable speaker diarization
+    --max-speakers <number>             Maximum number of speakers for diarization (default: 2)
+    --channels <channel1,channel2,...>  Specify audio channels for transcription
+    --profanity <mode>                  Profanity filter mode (None, Masked, Removed, Tags)
+    --key <key>                         Speech service subscription key
+    --region <region>                   Speech service region
+    --output <format>                   Output format (json, text) [default: text]
+
+Examples:
+    ai speech fast-transcribe recording.wav --locale en-US
+    ai speech fast-transcribe meeting.wav --diarization --max-speakers 4
+    ai speech fast-transcribe multilang.wav --locales "en-US,ja-JP"
+    ai speech fast-transcribe stereo.wav --channels "0,1"
