@@ -9,40 +9,72 @@ namespace Microsoft.AI.CLI.Commands.Parsers
 {
     public class FastTranscriptionCommandParser : CommandParser
     {
-        public FastTranscriptionCommandParser()
+        public static bool ParseCommand(INamedValueTokens tokens, ICommandValues values)
         {
-            AddTokenParser(new RequiredValidValueNamedValueTokenParser("key", "The subscription key for Azure Speech service"));
-            AddTokenParser(new RequiredValidValueNamedValueTokenParser("region", "The Azure region where your Speech resource is deployed"));
-            
-            AddTokenParser(new OptionalValidValueNamedValueTokenParser("locale", "The language code for single-language transcription"));
-            AddTokenParser(new OptionalValidValueNamedValueTokenParser("locales", "Comma-separated list of language codes for multi-language transcription"));
-            
-            AddTokenParser(new TrueFalseNamedValueTokenParser("diarization", "Enable speaker diarization"));
-            AddTokenParser(new OptionalValidValueNamedValueTokenParser("max-speakers", "Maximum number of speakers to identify (2-10)"));
-            
-            AddTokenParser(new OptionalValidValueNamedValueTokenParser("channels", "Number of audio channels"));
-            
-            var profanityValues = new[] { "raw", "remove", "mask" };
-            AddTokenParser(new Any1ValueNamedValueTokenParser("profanity", "Profanity filtering mode", profanityValues));
-            
-            var outputValues = new[] { "text", "json" };
-            AddTokenParser(new Any1ValueNamedValueTokenParser("output", "Output format", outputValues));
+            return ParseCommand("fast-transcribe", fastTranscriptionCommandParsers, tokens, values);
         }
+
+        public static bool ParseCommandValues(INamedValueTokens tokens, ICommandValues values)
+        {
+            return ParseCommandValues("fast-transcribe", fastTranscriptionCommandParsers, tokens, values);
+        }
+
+        public static IEnumerable<INamedValueTokenParser> GetCommandParsers()
+        {
+            return fastTranscriptionCommandParsers;
+        }
+
+        #region private data
+
+        private static INamedValueTokenParser[] fastTranscriptionCommandParsers = {
+            // Command identifier
+            new RequiredValidValueNamedValueTokenParser(null, "x.command", "11", "fast-transcribe"),
+
+            // Common parsers
+            new ExpectOutputTokenParser(),
+            new DiagnosticLogTokenParser(),
+            new CommonNamedValueTokenParsers(),
+
+            // Required parameters
+            new RequiredValidValueNamedValueTokenParser("--key", "service.config.key", "001", null),
+            new RequiredValidValueNamedValueTokenParser("--region", "service.config.region", "001", null),
+
+            // Language configuration
+            new Any1ValueNamedValueTokenParser("--locale", "service.config.locale", "001"),
+            new Any1ValueNamedValueTokenParser("--locales", "service.config.locales", "001"),
+
+            // Diarization settings
+            new TrueFalseNamedValueTokenParser("--diarization", "service.config.diarization.enabled", "001"),
+            new Any1ValueNamedValueTokenParser("--max-speakers", "service.config.diarization.max.speakers", "001"),
+
+            // Audio configuration
+            new Any1ValueNamedValueTokenParser("--channels", "service.config.audio.channels", "001"),
+
+            // Profanity filter
+            new RequiredValidValueNamedValueTokenParser("--profanity", "service.config.profanity", "001", "raw;remove;mask"),
+
+            // Output format
+            new RequiredValidValueNamedValueTokenParser("--output", "service.config.output.format", "001", "text;json"),
+
+            // Input file handling
+            new ExpandFileNameNamedValueTokenParser(),
+            new Any1ValueNamedValueTokenParser(null, "audio.input.file", "011"),
+        };
 
         public override void ValidateTokens(IEnumerable<NamedValueToken> tokens)
         {
             base.ValidateTokens(tokens);
 
-            var hasLocale = tokens.Any(t => t.Name == "locale" && t.HasValue);
-            var hasLocales = tokens.Any(t => t.Name == "locales" && t.HasValue);
+            var hasLocale = tokens.Any(t => t.Name == "service.config.locale" && t.HasValue);
+            var hasLocales = tokens.Any(t => t.Name == "service.config.locales" && t.HasValue);
             
             if (hasLocale && hasLocales)
             {
                 throw new ArgumentException("Cannot specify both --locale and --locales");
             }
 
-            var hasDiarization = tokens.Any(t => t.Name == "diarization" && t.Value == "true");
-            var maxSpeakersToken = tokens.FirstOrDefault(t => t.Name == "max-speakers");
+            var hasDiarization = tokens.Any(t => t.Name == "service.config.diarization.enabled" && t.Value == "true");
+            var maxSpeakersToken = tokens.FirstOrDefault(t => t.Name == "service.config.diarization.max.speakers");
             
             if (hasDiarization && (maxSpeakersToken == null || !maxSpeakersToken.HasValue))
             {
@@ -57,7 +89,7 @@ namespace Microsoft.AI.CLI.Commands.Parsers
                 }
             }
 
-            var channelsToken = tokens.FirstOrDefault(t => t.Name == "channels");
+            var channelsToken = tokens.FirstOrDefault(t => t.Name == "service.config.audio.channels");
             if (channelsToken != null && channelsToken.HasValue)
             {
                 if (!int.TryParse(channelsToken.Value, out int channels) || channels < 1)
