@@ -1,102 +1,70 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.CommonForCli.Details.Commands.Parsers;
+using Microsoft.CommonForCli.Details.NamedValues;
+using Microsoft.CommonForCli.Details.NamedValues.Parsers;
 
-namespace Azure.AI.Details.Common.CLI
+namespace Microsoft.AI.CLI.Commands.Parsers
 {
-    public class FastTranscriptionCommandParser : Parser
+    public class FastTranscriptionCommandParser : CommandParser
     {
-        public FastTranscriptionCommandParser(ICommandValues values) : base(values)
+        public FastTranscriptionCommandParser()
         {
-            _values = values;
+            AddTokenParser(new RequiredValidValueNamedValueTokenParser("key", "The subscription key for Azure Speech service"));
+            AddTokenParser(new RequiredValidValueNamedValueTokenParser("region", "The Azure region where your Speech resource is deployed"));
+            
+            AddTokenParser(new OptionalValidValueNamedValueTokenParser("locale", "The language code for single-language transcription"));
+            AddTokenParser(new OptionalValidValueNamedValueTokenParser("locales", "Comma-separated list of language codes for multi-language transcription"));
+            
+            AddTokenParser(new TrueFalseNamedValueTokenParser("diarization", "Enable speaker diarization"));
+            AddTokenParser(new OptionalValidValueNamedValueTokenParser("max-speakers", "Maximum number of speakers to identify (2-10)"));
+            
+            AddTokenParser(new OptionalValidValueNamedValueTokenParser("channels", "Number of audio channels"));
+            
+            var profanityValues = new[] { "raw", "remove", "mask" };
+            AddTokenParser(new Any1ValueNamedValueTokenParser("profanity", "Profanity filtering mode", profanityValues));
+            
+            var outputValues = new[] { "text", "json" };
+            AddTokenParser(new Any1ValueNamedValueTokenParser("output", "Output format", outputValues));
         }
 
-        public override void Parse()
+        public override void ValidateTokens(IEnumerable<NamedValueToken> tokens)
         {
-            var args = _values.GetRemainingArgs();
-            if (args.Count == 0)
+            base.ValidateTokens(tokens);
+
+            var hasLocale = tokens.Any(t => t.Name == "locale" && t.HasValue);
+            var hasLocales = tokens.Any(t => t.Name == "locales" && t.HasValue);
+            
+            if (hasLocale && hasLocales)
             {
-                throw new ArgumentException("Audio file path is required.");
+                throw new ArgumentException("Cannot specify both --locale and --locales");
             }
 
-            _values["audioFile"] = args[0];
-
-            // Parse locale or locales
-            if (_values.ContainsKey("locale"))
+            var hasDiarization = tokens.Any(t => t.Name == "diarization" && t.Value == "true");
+            var maxSpeakersToken = tokens.FirstOrDefault(t => t.Name == "max-speakers");
+            
+            if (hasDiarization && (maxSpeakersToken == null || !maxSpeakersToken.HasValue))
             {
-                _values["locale"] = _values.GetString("locale");
-            }
-            else if (_values.ContainsKey("locales"))
-            {
-                var locales = _values.GetString("locales")
-                    .Split(',')
-                    .Select(l => l.Trim())
-                    .ToList();
-                _values["locales"] = locales;
+                throw new ArgumentException("--max-speakers is required when using --diarization");
             }
 
-            // Parse diarization options
-            if (_values.ContainsKey("diarization"))
+            if (maxSpeakersToken != null && maxSpeakersToken.HasValue)
             {
-                _values["diarization"] = true;
-                if (_values.ContainsKey("max-speakers"))
+                if (!int.TryParse(maxSpeakersToken.Value, out int maxSpeakers) || maxSpeakers < 2 || maxSpeakers > 10)
                 {
-                    if (!int.TryParse(_values.GetString("max-speakers"), out int maxSpeakers))
-                    {
-                        throw new ArgumentException("max-speakers must be a valid integer");
-                    }
-                    _values["max-speakers"] = maxSpeakers;
+                    throw new ArgumentException("--max-speakers must be a number between 2 and 10");
                 }
             }
 
-            // Parse channels
-            if (_values.ContainsKey("channels"))
+            var channelsToken = tokens.FirstOrDefault(t => t.Name == "channels");
+            if (channelsToken != null && channelsToken.HasValue)
             {
-                var channels = _values.GetString("channels")
-                    .Split(',')
-                    .Select(c => 
-                    {
-                        if (!int.TryParse(c.Trim(), out int channel))
-                        {
-                            throw new ArgumentException($"Invalid channel value: {c}");
-                        }
-                        return channel;
-                    })
-                    .ToList();
-                _values["channels"] = channels;
-            }
-
-            // Parse profanity filter mode
-            if (_values.ContainsKey("profanity"))
-            {
-                var profanity = _values.GetString("profanity");
-                if (!new[] { "None", "Masked", "Removed", "Tags" }.Contains(profanity))
+                if (!int.TryParse(channelsToken.Value, out int channels) || channels < 1)
                 {
-                    throw new ArgumentException("Invalid profanity filter mode. Valid values are: None, Masked, Removed, Tags");
+                    throw new ArgumentException("--channels must be a positive number");
                 }
-                _values["profanity"] = profanity;
-            }
-
-            // Parse output format
-            var outputFormat = _values.GetOrDefault("output", "text");
-            if (!new[] { "json", "text" }.Contains(outputFormat))
-            {
-                throw new ArgumentException("Invalid output format. Valid values are: json, text");
-            }
-            _values["output"] = outputFormat;
-
-            // Validate required parameters
-            if (!_values.ContainsKey("key"))
-            {
-                throw new ArgumentException("Speech service key is required. Use --key option.");
-            }
-
-            if (!_values.ContainsKey("region"))
-            {
-                throw new ArgumentException("Speech service region is required. Use --region option.");
             }
         }
-
-        private readonly ICommandValues _values;
     }
 }
