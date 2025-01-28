@@ -1,0 +1,62 @@
+NAME
+    ai speech fast-transcribe - Transcribe audio files using Azure Speech Fast Transcription API
+
+SYNOPSIS
+    ai speech fast-transcribe <audio-file> --key <key> --region <region> [options]
+
+DESCRIPTION
+    The fast-transcribe command uses Azure's Speech Fast Transcription API to quickly convert audio files to text. 
+    It supports various features including speaker diarization, multi-language detection, and profanity filtering.
+
+ARGUMENTS
+    <audio-file>
+        Path to the audio file to transcribe. Supported formats include WAV, MP3, OGG, and other common audio formats.
+
+REQUIRED PARAMETERS
+    --key <key>
+        The subscription key for your Azure Speech resource.
+
+    --region <region>
+        The Azure region where your Speech resource is deployed (e.g., westus, eastus).
+
+OPTIONS
+    --locale <locale>
+        The language code for single-language transcription (e.g., en-US, ja-JP).
+        Cannot be used together with --locales.
+
+    --locales <locales>
+        Comma-separated list of language codes for multi-language transcription (e.g., "en-US,ja-JP").
+        Cannot be used together with --locale.
+
+    --diarization
+        Enable speaker diarization to identify different speakers in the audio.
+        Must be used with --max-speakers.
+
+    --max-speakers <number>
+        Maximum number of speakers to identify when using diarization.
+        Required when --diarization is specified. Value must be between 2 and 10.
+
+    --channels <number>
+        Number of channels in the audio file for multi-channel processing.
+        Default is 1 for mono audio.
+
+    --profanity <mode>
+        Profanity filtering mode. Allowed values: raw, remove, mask
+        Default is raw (no filtering).
+
+    --output <format>
+        Output format for the transcription. Allowed values: text, json
+        Default is text.
+
+EXAMPLES
+    Basic transcription of an English audio file:
+        ai speech fast-transcribe recording.wav --locale en-US --key <key> --region westus
+
+    Enable speaker diarization for up to 4 speakers:
+        ai speech fast-transcribe meeting.wav --diarization --max-speakers 4 --key <key> --region westus
+
+    Multi-language transcription with Japanese and English:
+        ai speech fast-transcribe multilang.wav --locales "en-US,ja-JP" --key <key> --region westus
+
+    Process a stereo file with profanity masking and JSON output:
+        ai speech fast-transcribe stereo.wav --channels 2 --profanity mask --output json --key <key> --region westus

@@ -79,6 +79,10 @@ namespace Azure.AI.Details.Common.CLI
                     new BatchCommand(_values).RunCommand();
                     break;
 
+                case "speech.fast-transcribe":
+                    new FastTranscriptionCommand(_values).RunCommand();
+                    break;
+
                 case "speech.csr":
                     new CustomSpeechRecognitionCommand(_values).RunCommand();
                     break;

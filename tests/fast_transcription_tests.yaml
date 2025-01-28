@@ -1,0 +1,58 @@
+name: Test Fast Transcription Command
+description: Tests for the ai speech fast-transcribe command
+
+variables:
+  key: $env:SPEECH_KEY
+  region: $env:SPEECH_REGION
+  audio_file: test.wav
+
+setup:
+  - !CreateTestFile
+    path: test.wav
+    size: 1024  # Create a dummy audio file for testing
+
+TestCases:
+  - name: Basic transcription with locale
+    command: ai speech fast-transcribe test.wav --locale en-US --key $(key) --region $(region)
+    exitcode: 0
+
+  - name: Multi-language transcription
+    command: ai speech fast-transcribe test.wav --locales "en-US,ja-JP" --key $(key) --region $(region)
+    exitcode: 0
+
+  - name: Transcription with diarization
+    command: ai speech fast-transcribe test.wav --diarization --max-speakers 4 --key $(key) --region $(region)
+    exitcode: 0
+
+  - name: Transcription with profanity filtering
+    command: ai speech fast-transcribe test.wav --profanity mask --key $(key) --region $(region)
+    exitcode: 0
+
+  - name: Transcription with JSON output
+    command: ai speech fast-transcribe test.wav --output json --key $(key) --region $(region)
+    exitcode: 0
+
+  - name: Error - Missing key
+    command: ai speech fast-transcribe test.wav --region $(region)
+    exitcode: 1
+    stderr: Error: Required parameter --key is missing
+
+  - name: Error - Missing region
+    command: ai speech fast-transcribe test.wav --key $(key)
+    exitcode: 1
+    stderr: Error: Required parameter --region is missing
+
+  - name: Error - Invalid max-speakers value
+    command: ai speech fast-transcribe test.wav --diarization --max-speakers 1 --key $(key) --region $(region)
+    exitcode: 1
+    stderr: Error: --max-speakers must be a number between 2 and 10
+
+  - name: Error - Diarization without max-speakers
+    command: ai speech fast-transcribe test.wav --diarization --key $(key) --region $(region)
+    exitcode: 1
+    stderr: Error: --max-speakers is required when using --diarization
+
+  - name: Error - Both locale and locales specified
+    command: ai speech fast-transcribe test.wav --locale en-US --locales "en-US,ja-JP" --key $(key) --region $(region)
+    exitcode: 1
+    stderr: Error: Cannot specify both --locale and --locales
